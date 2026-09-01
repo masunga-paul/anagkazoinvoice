@@ -9,7 +9,6 @@
     UserCheck,
     AlertCircle,
     Loader2,
-    Sparkles,
   } from "lucide-svelte";
   import logoImg from "$lib/assets/logo.png";
   import { loginWithNeon } from "$lib/auth/neonAuth";
@@ -17,10 +16,6 @@
   import type { User } from "$lib/types/auth";
   import { superForm, defaults } from "sveltekit-superforms";
   import { zod, zodClient } from "sveltekit-superforms/adapters";
-  import {
-    getStoredStaffCredentials,
-    getStoredAdminCredentials,
-  } from "$lib/utils/storage";
 
   interface Props {
     isOpen: boolean;
@@ -33,12 +28,6 @@
   let showPassword = $state(false);
   let isLoading = $state(false);
   let errorMessage = $state("");
-  let staffCreds = $derived(
-    isOpen ? getStoredStaffCredentials() : getStoredStaffCredentials(),
-  );
-  let adminCreds = $derived(
-    isOpen ? getStoredAdminCredentials() : getStoredAdminCredentials(),
-  );
 
   const { form, errors, enhance } = superForm<LoginInput>(
     defaults({ email: "", password: "" }, zod(loginSchema as any) as any),
@@ -77,11 +66,6 @@
     },
   );
 
-  function quickFill(userEmail: string, userPass: string) {
-    $form.email = userEmail;
-    $form.password = userPass;
-    errorMessage = "";
-  }
 </script>
 
 {#if isOpen}
@@ -227,70 +211,6 @@
           {/if}
         </button>
       </form>
-
-      <!-- Quick Fill Demo Accounts -->
-      <div class="mt-5 pt-4 border-t border-slate-200">
-        <div class="flex items-center justify-between mb-2">
-          <span
-            class="text-xs font-black text-slate-700 uppercase tracking-wider"
-          >
-            1-Click Demo Logins
-          </span>
-          <Sparkles class="h-4 w-4 text-sky-600" />
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <!-- Admin Demo Fill -->
-          <button
-            type="button"
-            onclick={() =>
-              quickFill(
-                adminCreds.email,
-                adminCreds.password || "123456789Baraka",
-              )}
-            class="text-left rounded-xl border border-slate-300 bg-slate-50/70 p-3 transition hover:border-navy-800 hover:bg-navy-50/50 cursor-pointer group"
-          >
-            <div class="flex items-center justify-between">
-              <span class="text-xs sm:text-[13px] font-black text-navy-950"
-                >{adminCreds.name || "Admin Account"}</span
-              >
-              <span
-                class="text-[10px] font-black bg-navy-950 text-white rounded px-1.5 py-0.5"
-                >ADMIN</span
-              >
-            </div>
-            <p class="text-xs text-slate-600 truncate mt-0.5 font-mono font-medium">
-              {adminCreds.email}
-            </p>
-            <span class="text-xs text-navy-900 font-bold block mt-1">
-              Full Dashboard & Reports
-            </span>
-          </button>
-
-          <!-- Standard User Demo Fill -->
-          <button
-            type="button"
-            onclick={() => quickFill(staffCreds.email, staffCreds.password)}
-            class="text-left rounded-xl border border-slate-300 bg-slate-50/70 p-3 transition hover:border-sky-600 hover:bg-sky-50/50 cursor-pointer group"
-          >
-            <div class="flex items-center justify-between">
-              <span class="text-xs sm:text-[13px] font-black text-slate-950"
-                >{staffCreds.name || "Standard User"}</span
-              >
-              <span
-                class="text-[10px] font-black bg-slate-200 text-slate-800 rounded px-1.5 py-0.5"
-                >STAFF</span
-              >
-            </div>
-            <p class="text-xs text-slate-600 truncate mt-0.5 font-mono font-medium">
-              {staffCreds.email}
-            </p>
-            <span class="text-xs text-slate-700 font-bold block mt-1">
-              Invoices & Products Only
-            </span>
-          </button>
-        </div>
-      </div>
     </div>
   </div>
 {/if}
