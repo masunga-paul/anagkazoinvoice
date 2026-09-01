@@ -9,11 +9,11 @@
 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 	<!-- Left Title Info -->
 	<div>
-		<div class="flex items-center gap-3">
-			<h1 class="text-2xl sm:text-3xl font-black tracking-tight text-slate-950">
+		<div class="flex flex-wrap items-center gap-2 sm:gap-3">
+			<h1 class="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-slate-950">
 				Create / Edit Invoice
 			</h1>
-			<span class="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1 text-xs sm:text-sm font-bold font-mono text-slate-800 ring-1 ring-inset ring-slate-300">
+			<span class="inline-flex items-center rounded-lg bg-slate-100 px-2.5 sm:px-3 py-1 text-xs sm:text-sm font-bold font-mono text-slate-800 ring-1 ring-inset ring-slate-300">
 				{invoiceNumber}
 			</span>
 		</div>

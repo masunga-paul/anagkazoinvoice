@@ -26,13 +26,24 @@
 		text-rendering: optimizeLegibility;
 	}
 
+	html {
+		overflow-x: hidden;
+		width: 100%;
+		max-width: 100%;
+		-webkit-text-size-adjust: 100%;
+	}
+
 	*, ::before, ::after {
+		box-sizing: border-box;
 		font-family: 'Quicksand Variable', 'Quicksand', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 		-webkit-font-smoothing: antialiased;
 		-moz-osx-font-smoothing: grayscale;
 	}
 
 	body {
+		overflow-x: hidden;
+		width: 100%;
+		max-width: 100%;
 		font-family: 'Quicksand Variable', 'Quicksand', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 		font-weight: 500;
 		color: #1e293b;

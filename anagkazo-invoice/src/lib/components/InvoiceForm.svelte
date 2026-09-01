@@ -603,7 +603,7 @@
         </button>
 
         {#if stocks && stocks.length > 0}
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 w-full sm:w-auto">
             <select
               onchange={(e) => {
                 const target = e.target as HTMLSelectElement;
@@ -662,18 +662,16 @@
                 }
                 target.value = "";
               }}
-              class="rounded-xl border border-sky-200 bg-sky-50/60 px-3 py-2 text-xs font-semibold text-navy-900 focus:border-navy-900 focus:outline-none cursor-pointer"
+              class="w-full sm:w-auto max-w-full rounded-xl border border-sky-200 bg-sky-50/60 px-3 py-2 text-xs font-semibold text-navy-900 focus:border-navy-900 focus:outline-none cursor-pointer"
             >
               <option value=""
-                >+ Insert Tyre Stock ({stocks.length} commercial SKUs)...</option
+                >+ Insert Tyre Stock ({stocks.length} SKUs)...</option
               >
               {#each stocks as s}
                 {@const avail = getEffectiveAvailableStock(s, form.items)}
                 <option value={s.id} disabled={avail <= 0}>
                   {s.brand}
-                  {s.model} - {s.size} ({formatTZS(s.unitPriceTZS)} | {avail > 0
-                    ? `${avail} in stock`
-                    : "OUT OF STOCK"})
+                  {s.model} - {s.size} ({formatTZS(s.unitPriceTZS)})
                 </option>
               {/each}
             </select>

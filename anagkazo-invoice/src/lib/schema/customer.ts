@@ -33,8 +33,8 @@ export const customerSchema = z.object({
 	creditLimit: z
 		.coerce
 		.number()
-		.min(0, 'Credit limit cannot be negative')
-		.default(10000000),
+		.optional()
+		.default(0),
 	paymentTerms: z
 		.string()
 		.min(1, 'Payment terms are required')

@@ -1100,9 +1100,9 @@
 	const grandTotal = $derived(Math.max(0, subtotal + taxAmount - discountAmount));
 </script>
 
-<div class="min-h-screen flex flex-col bg-[#f3f4f8] text-slate-900 justify-between">
+<div class="min-h-screen flex flex-col bg-[#f3f4f8] text-slate-900 justify-between overflow-x-hidden w-full max-w-full">
 	<!-- Top Navigation (Sticky) -->
-	<div class="no-print sticky top-0 z-40">
+	<div class="no-print sticky top-0 z-40 w-full">
 		<Navbar
 			bind:activeNav={currentTab}
 			currentUser={currentUser}
@@ -1111,9 +1111,8 @@
 		/>
 	</div>
 
-
 	<!-- Main App Content Container -->
-	<main class="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
+	<main class="flex-1 mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8 pt-4 sm:pt-8 overflow-x-hidden">
 		{#if !currentUser}
 			<!-- Unauthenticated State: Protected Gateway with Neon Auth & 1-Click Fast Login -->
 			<AuthGateway onSuccess={handleLoginSuccess} />

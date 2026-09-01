@@ -83,9 +83,9 @@
   }
 </script>
 
-<div class="py-6 sm:py-12 max-w-xl mx-auto">
+<div class="py-6 sm:py-12 max-w-xl mx-auto px-4 w-full flex flex-col items-center">
   <!-- Hero / Welcome Header -->
-  <div class="text-center mr-25 mb-6">
+  <div class="text-center mb-6 w-full">
     <h1
       class="text-2xl sm:text-4xl font-extrabold tracking-tight text-navy-900"
     >
@@ -95,7 +95,7 @@
 
   <!-- Sign In Form Card -->
   <div
-    class="w-[30em] rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-xl flex flex-col justify-between"
+    class="w-full max-w-md rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-xl flex flex-col justify-between"
   >
     <div>
       <div

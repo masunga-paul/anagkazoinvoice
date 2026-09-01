@@ -21,7 +21,6 @@
 	let address = $state('');
 	let city = $state('Dar es Salaam');
 	let customerType = $state('Fleet & Logistics');
-	let creditLimit = $state<number | ''>(50000000);
 	let paymentTerms = $state('Net 14');
 	let tin = $state('');
 
@@ -38,7 +37,6 @@
 				address = customerToEdit.address || '';
 				city = customerToEdit.city || 'Dar es Salaam';
 				customerType = customerToEdit.customerType || 'Fleet & Logistics';
-				creditLimit = customerToEdit.creditLimit !== undefined ? customerToEdit.creditLimit : 50000000;
 				paymentTerms = customerToEdit.paymentTerms || 'Net 14';
 				tin = customerToEdit.tin || '';
 				formErrors = {};
@@ -65,7 +63,6 @@
 		address = '';
 		city = 'Dar es Salaam';
 		customerType = 'Fleet & Logistics';
-		creditLimit = 50000000;
 		paymentTerms = 'Net 14';
 		tin = '';
 		formErrors = {};
@@ -82,7 +79,7 @@
 			address: address.trim(),
 			city: city.trim(),
 			customerType,
-			creditLimit: Number(creditLimit) || 0,
+			creditLimit: 0,
 			paymentTerms,
 			tin: tin.trim()
 		};
@@ -112,7 +109,7 @@
 				address: valid.address.trim(),
 				city: valid.city.trim(),
 				customerType: valid.customerType as CustomerType,
-				creditLimit: Number(valid.creditLimit) || 0,
+				creditLimit: customerToEdit.creditLimit || 0,
 				paymentTerms: valid.paymentTerms,
 				tin: valid.tin.trim()
 			};
@@ -131,7 +128,7 @@
 				totalPurchases: 0,
 				outstandingBalance: 0,
 				invoicesCount: 0,
-				creditLimit: Number(valid.creditLimit) || 0,
+				creditLimit: 0,
 				paymentTerms: valid.paymentTerms,
 				tin: valid.tin.trim(),
 				status: 'Paid'
@@ -145,8 +142,8 @@
 </script>
 
 {#if open}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-in fade-in">
-		<div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-slate-900/10">
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-4 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+		<div class="w-full max-w-lg rounded-2xl bg-white p-5 sm:p-6 shadow-2xl ring-1 ring-slate-900/10 max-h-[90vh] overflow-y-auto my-auto">
 			<!-- Modal Header -->
 			<div class="flex items-center justify-between border-b border-slate-100 pb-3">
 				<div class="flex items-center gap-2">
@@ -347,46 +344,23 @@
 					</div>
 				</div>
 
-				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-					<!-- Payment Terms -->
-					<div>
-						<label for="newCustTerms" class="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-							Payment Terms
-						</label>
-						<select
-							id="newCustTerms"
-							name="paymentTerms"
-							bind:value={paymentTerms}
-							class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm text-slate-900 focus:border-navy-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-navy-900/10 cursor-pointer"
-						>
-							<option value="Net 7">Net 7</option>
-							<option value="Net 14">Net 14</option>
-							<option value="Due on Receipt">Due on Receipt</option>
-							<option value="Cash on Delivery (COD)">Cash on Delivery (COD)</option>
-							<option value="50% Advance / 50% on Delivery">50% Advance / 50% on Delivery</option>
-						</select>
-					</div>
-
-					<!-- Credit Limit -->
-					<div>
-						<label for="newCustLimit" class="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-							Credit Limit (TZS)
-						</label>
-						<input
-							id="newCustLimit"
-							name="creditLimit"
-							type="number"
-							step="1000000"
-							bind:value={creditLimit}
-							class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm text-slate-900 focus:border-navy-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-navy-900/10"
-						/>
-						{#if formErrors.creditLimit}
-							<p class="text-[11px] font-semibold text-rose-600 mt-1 flex items-center gap-1">
-								<AlertCircle class="h-3 w-3 shrink-0" />
-								<span>{formErrors.creditLimit}</span>
-							</p>
-						{/if}
-					</div>
+				<!-- Payment Terms -->
+				<div>
+					<label for="newCustTerms" class="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+						Payment Terms
+					</label>
+					<select
+						id="newCustTerms"
+						name="paymentTerms"
+						bind:value={paymentTerms}
+						class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm text-slate-900 focus:border-navy-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-navy-900/10 cursor-pointer"
+					>
+						<option value="Net 7">Net 7</option>
+						<option value="Net 14">Net 14</option>
+						<option value="Due on Receipt">Due on Receipt</option>
+						<option value="Cash on Delivery (COD)">Cash on Delivery (COD)</option>
+						<option value="50% Advance / 50% on Delivery">50% Advance / 50% on Delivery</option>
+					</select>
 				</div>
 
 				<!-- Footer Buttons -->
