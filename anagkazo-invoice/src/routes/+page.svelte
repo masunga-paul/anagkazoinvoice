@@ -25,16 +25,31 @@
 	import {
 		getStoredCustomers,
 		saveStoredCustomers,
+		fetchRemoteCustomers,
+		syncSingleCustomer,
+		deleteRemoteCustomer,
+		deleteAllRemoteCustomers,
 		getStoredStocks,
 		saveStoredStocks,
+		fetchRemoteProducts,
+		syncSingleProduct,
+		deleteRemoteProduct,
+		deleteAllRemoteProducts,
 		getStoredInvoices,
 		saveStoredInvoices,
+		fetchRemoteInvoices,
+		syncSingleInvoice,
+		deleteRemoteInvoice,
+		deleteAllRemoteInvoices,
 		getStoredDraftInvoice,
 		saveStoredDraftInvoice,
 		getStoredActiveTab,
 		saveStoredActiveTab,
 		getStoredPaymentDetails,
 		saveStoredPaymentDetails,
+		fetchRemotePaymentDetails,
+		syncSinglePaymentDetail,
+		deleteRemotePaymentDetail,
 		getStoredStaffCredentials,
 		saveStoredStaffCredentials,
 		DEFAULT_STAFF_CREDENTIALS,
@@ -164,11 +179,26 @@
 		customersList = getStoredCustomers();
 		tyreStocksList = getStoredStocks();
 		invoicesList = getStoredInvoices();
+		paymentDetailsList = getStoredPaymentDetails();
 		const savedDraft = getStoredDraftInvoice();
 		if (savedDraft && savedDraft.items && savedDraft.items.length > 0) {
 			formData = savedDraft;
 		}
 		isHydrated = true;
+
+		// Fetch live Neon PostgreSQL records asynchronously to ensure cross-device consistency
+		fetchRemoteCustomers().then((c) => {
+			if (c && Array.isArray(c)) customersList = c;
+		});
+		fetchRemoteProducts().then((p) => {
+			if (p && Array.isArray(p)) tyreStocksList = p;
+		});
+		fetchRemoteInvoices().then((i) => {
+			if (i && Array.isArray(i)) invoicesList = i;
+		});
+		fetchRemotePaymentDetails().then((d) => {
+			if (d && Array.isArray(d)) paymentDetailsList = d;
+		});
 
 		// Subscribe to sync bus across tabs
 		const unsubscribeSync = subscribeToSync((message) => {
@@ -423,7 +453,10 @@
 			notes: data.notes,
 			paymentDetailId: data.paymentDetailId,
 			paymentDetail: data.paymentDetail,
-			fullData: JSON.parse(JSON.stringify(data))
+			fullData: JSON.parse(JSON.stringify(data)),
+			createdAt: existingIndex !== -1 && invoicesList[existingIndex].createdAt ? invoicesList[existingIndex].createdAt : new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+			createdBy: existingIndex !== -1 && invoicesList[existingIndex].createdBy ? invoicesList[existingIndex].createdBy : (currentUser?.name || (currentUser?.role === 'admin' ? 'Masunga Paul Maganga (Admin)' : 'Baraka Maganga (Staff)'))
 		};
 
 		if (existingIndex !== -1) {
@@ -433,6 +466,7 @@
 			invoicesList = [invoiceItem, ...invoicesList];
 		}
 		saveStoredInvoices(invoicesList);
+		syncSingleInvoice(invoiceItem, currentUser?.role || 'Staff');
 
 		// 2. Synchronize the Customer in customersList in real-time
 		const custNameLower = data.customerName.toLowerCase().trim();
@@ -508,7 +542,8 @@
 		}
 		invoicesList = invoicesList.filter(i => i.id !== invoiceId);
 		saveStoredInvoices(invoicesList);
-		showToast(`Invoice ${invoiceId} deleted from transaction records.`, 'info', 'DELETE', 'Invoice Deleted');
+		deleteRemoteInvoice(invoiceId);
+		showToast(`Invoice ${invoiceId} deleted from transaction records & database.`, 'info', 'DELETE', 'Invoice Deleted');
 	}
 
 	// Action: Delete All Invoices from records
@@ -519,7 +554,8 @@
 		}
 		invoicesList = [];
 		saveStoredInvoices([]);
-		showToast('All recent invoice records have been deleted.', 'info', 'DELETE', 'Invoices Cleared');
+		deleteAllRemoteInvoices();
+		showToast('All recent invoice records have been permanently deleted from database.', 'info', 'DELETE', 'Invoices Cleared');
 	}
 
 	// Action: Delete All Data from whole system & database to start fresh (Admin only)
@@ -600,7 +636,8 @@
 		const cust = customersList.find(c => c.id === customerId);
 		customersList = customersList.filter(c => c.id !== customerId);
 		saveStoredCustomers(customersList);
-		showToast(`Customer "${cust?.companyName || cust?.name || customerId}" removed from directory.`, 'info', 'DELETE', 'Customer Deleted');
+		deleteRemoteCustomer(customerId);
+		showToast(`Customer "${cust?.companyName || cust?.name || customerId}" permanently removed from database.`, 'info', 'DELETE', 'Customer Deleted');
 	}
 
 	// Action: Delete All Customers from directory (Admin only)
@@ -611,7 +648,8 @@
 		}
 		customersList = [];
 		saveStoredCustomers([]);
-		showToast('All customer records have been deleted from directory.', 'info', 'DELETE', 'Customers Cleared');
+		deleteAllRemoteCustomers();
+		showToast('All customer records have been deleted permanently from database.', 'info', 'DELETE', 'Customers Cleared');
 	}
 
 	// Action: Delete Product from inventory
@@ -621,10 +659,12 @@
 			return;
 		}
 		const prod = tyreStocksList.find(p => p.sku === idOrSku || p.id === idOrSku);
+		const prodId = prod?.id || idOrSku;
 		tyreStocksList = tyreStocksList.filter(p => p.sku !== idOrSku && p.id !== idOrSku);
 		saveStoredStocks(tyreStocksList);
+		deleteRemoteProduct(prodId);
 		showToast(
-			`Product "${prod?.brand || ''} ${prod?.model || ''}" (${prod?.size || idOrSku}) removed from inventory.`,
+			`Product "${prod?.brand || ''} ${prod?.model || ''}" (${prod?.size || idOrSku}) permanently removed from database.`,
 			'info',
 			'DELETE',
 			'Product Deleted'
@@ -639,7 +679,8 @@
 		}
 		tyreStocksList = [];
 		saveStoredStocks([]);
-		showToast('All product stock records have been deleted from inventory.', 'info', 'DELETE', 'Inventory Cleared');
+		deleteAllRemoteProducts();
+		showToast('All product stock records have been deleted permanently from database.', 'info', 'DELETE', 'Inventory Cleared');
 	}
 
 	// Action: Save as Draft
@@ -813,6 +854,8 @@
 			paymentDetailsList = paymentDetailsList.map((p) => ({ ...p, isDefault: false }));
 		}
 		paymentDetailsList = [detail, ...paymentDetailsList];
+		saveStoredPaymentDetails(paymentDetailsList);
+		syncSinglePaymentDetail(detail);
 	}
 
 	function handleUpdatePaymentDetail(detail: PaymentDetail) {
@@ -826,6 +869,8 @@
 		if (formData.paymentDetail?.id === detail.id) {
 			formData.paymentDetail = detail;
 		}
+		saveStoredPaymentDetails(paymentDetailsList);
+		syncSinglePaymentDetail(detail);
 	}
 
 	function handleDeletePaymentDetail(id: string) {
@@ -834,6 +879,8 @@
 			formData.paymentDetail = paymentDetailsList.find((p) => p.isDefault) || paymentDetailsList[0];
 			formData.paymentDetailId = formData.paymentDetail.id;
 		}
+		saveStoredPaymentDetails(paymentDetailsList);
+		deleteRemotePaymentDetail(id);
 	}
 
 	function handleSetDefaultPaymentDetail(id: string) {
@@ -1180,12 +1227,17 @@
 					customers={customersList}
 					invoices={invoicesList}
 					onAddCustomer={(newCust) => {
+						newCust.createdAt = newCust.createdAt || new Date().toISOString();
+						newCust.createdBy = newCust.createdBy || (currentUser?.name || 'Admin');
 						customersList = [newCust, ...customersList.filter(c => c.id !== newCust.id)];
 						saveStoredCustomers(customersList);
+						syncSingleCustomer(newCust, currentUser?.role || 'Admin');
 					}}
 					onUpdateCustomer={(updatedCust) => {
+						updatedCust.updatedAt = new Date().toISOString();
 						customersList = customersList.map(c => c.id === updatedCust.id ? updatedCust : c);
 						saveStoredCustomers(customersList);
+						syncSingleCustomer(updatedCust, currentUser?.role || 'Admin');
 					}}
 					onDeleteCustomer={handleDeleteCustomer}
 					onDeleteAllCustomers={handleDeleteAllCustomers}
@@ -1200,12 +1252,17 @@
 					stocks={tyreStocksList}
 					onAddServiceToInvoice={handleAddServiceToInvoice}
 					onAddProduct={(newProd) => {
+						newProd.createdAt = newProd.createdAt || new Date().toISOString();
+						newProd.createdBy = newProd.createdBy || (currentUser?.name || 'Admin');
 						tyreStocksList = [newProd, ...tyreStocksList.filter(s => s.id !== newProd.id)];
 						saveStoredStocks(tyreStocksList);
+						syncSingleProduct(newProd, currentUser?.role || 'Admin');
 					}}
 					onUpdateProduct={(updatedProd) => {
+						updatedProd.updatedAt = new Date().toISOString();
 						tyreStocksList = tyreStocksList.map(s => s.id === updatedProd.id || s.sku === updatedProd.sku ? updatedProd : s);
 						saveStoredStocks(tyreStocksList);
+						syncSingleProduct(updatedProd, currentUser?.role || 'Admin');
 					}}
 					onDeleteProduct={handleDeleteProduct}
 					onDeleteAllProducts={handleDeleteAllProducts}

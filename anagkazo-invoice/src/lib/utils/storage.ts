@@ -48,7 +48,7 @@ export const DEFAULT_STAFF_CREDENTIALS: StaffCredentials = {
 
 
 /**
- * Load persisted customers or fall back to initial mock data on first visit
+ * Load persisted customers (from localStorage or initial defaults)
  */
 export function getStoredCustomers(): Customer[] {
 	if (!browser) return [...MOCK_CUSTOMERS];
@@ -67,8 +67,28 @@ export function getStoredCustomers(): Customer[] {
 		console.warn('Failed to parse stored customers:', e);
 	}
 	const initial = [...MOCK_CUSTOMERS];
-	saveStoredCustomers(initial);
+	saveStoredCustomers(initial, false);
 	return initial;
+}
+
+/**
+ * Fetch live customers directly from Neon PostgreSQL
+ */
+export async function fetchRemoteCustomers(): Promise<Customer[] | null> {
+	if (!browser) return null;
+	try {
+		const res = await fetch('/api/customers');
+		if (res.ok) {
+			const json = await res.json();
+			if (json.success && Array.isArray(json.data)) {
+				saveStoredCustomers(json.data, false);
+				return json.data;
+			}
+		}
+	} catch (e) {
+		console.warn('[Storage] Could not fetch remote customers:', e);
+	}
+	return null;
 }
 
 /**
@@ -87,7 +107,47 @@ export function saveStoredCustomers(customers: Customer[], shouldBroadcast = tru
 }
 
 /**
- * Load persisted tyre stock products or fall back to initial mock data on first visit
+ * Sync single customer addition/update to Neon PostgreSQL
+ */
+export async function syncSingleCustomer(customer: Customer, userRole = 'Admin'): Promise<void> {
+	if (!browser) return;
+	try {
+		await fetch('/api/customers', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ customer, userRole })
+		});
+	} catch (e) {
+		console.warn('[Storage] Failed to sync customer to backend:', e);
+	}
+}
+
+/**
+ * Delete customer from Neon PostgreSQL
+ */
+export async function deleteRemoteCustomer(id: string): Promise<void> {
+	if (!browser) return;
+	try {
+		await fetch(`/api/customers?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+	} catch (e) {
+		console.warn('[Storage] Failed to delete customer from backend:', e);
+	}
+}
+
+/**
+ * Delete all customers from Neon PostgreSQL
+ */
+export async function deleteAllRemoteCustomers(): Promise<void> {
+	if (!browser) return;
+	try {
+		await fetch('/api/customers?all=true', { method: 'DELETE' });
+	} catch (e) {
+		console.warn('[Storage] Failed to delete all customers from backend:', e);
+	}
+}
+
+/**
+ * Load persisted tyre stock products
  */
 export function getStoredStocks(): TyreProductStock[] {
 	if (!browser) return [...MOCK_TYRE_STOCKS];
@@ -108,6 +168,26 @@ export function getStoredStocks(): TyreProductStock[] {
 }
 
 /**
+ * Fetch live products directly from Neon PostgreSQL
+ */
+export async function fetchRemoteProducts(): Promise<TyreProductStock[] | null> {
+	if (!browser) return null;
+	try {
+		const res = await fetch('/api/products');
+		if (res.ok) {
+			const json = await res.json();
+			if (json.success && Array.isArray(json.data)) {
+				saveStoredStocks(json.data, false);
+				return json.data;
+			}
+		}
+	} catch (e) {
+		console.warn('[Storage] Could not fetch remote products:', e);
+	}
+	return null;
+}
+
+/**
  * Save tyre stock products to persistent storage & broadcast sync
  */
 export function saveStoredStocks(stocks: TyreProductStock[], shouldBroadcast = true): void {
@@ -123,7 +203,47 @@ export function saveStoredStocks(stocks: TyreProductStock[], shouldBroadcast = t
 }
 
 /**
- * Load persisted generated invoices or fall back to initial mock data on first visit
+ * Sync single product addition/update to Neon PostgreSQL
+ */
+export async function syncSingleProduct(product: TyreProductStock, userRole = 'Admin'): Promise<void> {
+	if (!browser) return;
+	try {
+		await fetch('/api/products', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ product, userRole })
+		});
+	} catch (e) {
+		console.warn('[Storage] Failed to sync product to backend:', e);
+	}
+}
+
+/**
+ * Delete product from Neon PostgreSQL
+ */
+export async function deleteRemoteProduct(id: string): Promise<void> {
+	if (!browser) return;
+	try {
+		await fetch(`/api/products?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+	} catch (e) {
+		console.warn('[Storage] Failed to delete product from backend:', e);
+	}
+}
+
+/**
+ * Delete all products from Neon PostgreSQL
+ */
+export async function deleteAllRemoteProducts(): Promise<void> {
+	if (!browser) return;
+	try {
+		await fetch('/api/products?all=true', { method: 'DELETE' });
+	} catch (e) {
+		console.warn('[Storage] Failed to delete all products from backend:', e);
+	}
+}
+
+/**
+ * Load persisted generated invoices
  */
 export function getStoredInvoices(): GeneratedInvoiceItem[] {
 	if (!browser) return [...MOCK_RECENT_INVOICES] as GeneratedInvoiceItem[];
@@ -159,6 +279,26 @@ export function getStoredInvoices(): GeneratedInvoiceItem[] {
 }
 
 /**
+ * Fetch live invoices directly from Neon PostgreSQL
+ */
+export async function fetchRemoteInvoices(): Promise<GeneratedInvoiceItem[] | null> {
+	if (!browser) return null;
+	try {
+		const res = await fetch('/api/invoices');
+		if (res.ok) {
+			const json = await res.json();
+			if (json.success && Array.isArray(json.data)) {
+				saveStoredInvoices(json.data, false);
+				return json.data;
+			}
+		}
+	} catch (e) {
+		console.warn('[Storage] Could not fetch remote invoices:', e);
+	}
+	return null;
+}
+
+/**
  * Save generated invoices to persistent storage & broadcast sync
  */
 export function saveStoredInvoices(invoices: GeneratedInvoiceItem[], shouldBroadcast = true): void {
@@ -170,6 +310,46 @@ export function saveStoredInvoices(invoices: GeneratedInvoiceItem[], shouldBroad
 		}
 	} catch (e) {
 		console.error('Failed to save invoices to localStorage:', e);
+	}
+}
+
+/**
+ * Sync single invoice addition/update to Neon PostgreSQL
+ */
+export async function syncSingleInvoice(invoice: GeneratedInvoiceItem, userRole = 'Staff'): Promise<void> {
+	if (!browser) return;
+	try {
+		await fetch('/api/invoices', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ invoice, userRole })
+		});
+	} catch (e) {
+		console.warn('[Storage] Failed to sync invoice to backend:', e);
+	}
+}
+
+/**
+ * Delete invoice from Neon PostgreSQL
+ */
+export async function deleteRemoteInvoice(id: string): Promise<void> {
+	if (!browser) return;
+	try {
+		await fetch(`/api/invoices?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+	} catch (e) {
+		console.warn('[Storage] Failed to delete invoice from backend:', e);
+	}
+}
+
+/**
+ * Delete all invoices from Neon PostgreSQL
+ */
+export async function deleteAllRemoteInvoices(): Promise<void> {
+	if (!browser) return;
+	try {
+		await fetch('/api/invoices?all=true', { method: 'DELETE' });
+	} catch (e) {
+		console.warn('[Storage] Failed to delete all invoices from backend:', e);
 	}
 }
 
@@ -261,6 +441,26 @@ export function getStoredPaymentDetails(): PaymentDetail[] {
 }
 
 /**
+ * Fetch live payment details directly from Neon PostgreSQL
+ */
+export async function fetchRemotePaymentDetails(): Promise<PaymentDetail[] | null> {
+	if (!browser) return null;
+	try {
+		const res = await fetch('/api/payment-details');
+		if (res.ok) {
+			const json = await res.json();
+			if (json.success && Array.isArray(json.data)) {
+				saveStoredPaymentDetails(json.data, false);
+				return json.data;
+			}
+		}
+	} catch (e) {
+		console.warn('[Storage] Could not fetch remote payment details:', e);
+	}
+	return null;
+}
+
+/**
  * Save payment details list to persistent storage & broadcast sync
  */
 export function saveStoredPaymentDetails(details: PaymentDetail[], shouldBroadcast = true): void {
@@ -272,6 +472,34 @@ export function saveStoredPaymentDetails(details: PaymentDetail[], shouldBroadca
 		}
 	} catch (e) {
 		console.error('Failed to save payment details to localStorage:', e);
+	}
+}
+
+/**
+ * Sync single payment detail to Neon PostgreSQL
+ */
+export async function syncSinglePaymentDetail(paymentDetail: PaymentDetail): Promise<void> {
+	if (!browser) return;
+	try {
+		await fetch('/api/payment-details', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ paymentDetail })
+		});
+	} catch (e) {
+		console.warn('[Storage] Failed to sync payment detail to backend:', e);
+	}
+}
+
+/**
+ * Delete payment detail from Neon PostgreSQL
+ */
+export async function deleteRemotePaymentDetail(id: string): Promise<void> {
+	if (!browser) return;
+	try {
+		await fetch(`/api/payment-details?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+	} catch (e) {
+		console.warn('[Storage] Failed to delete payment detail from backend:', e);
 	}
 }
 

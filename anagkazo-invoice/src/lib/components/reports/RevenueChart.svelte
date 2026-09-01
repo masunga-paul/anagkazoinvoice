@@ -76,8 +76,8 @@
 	<!-- Chart Header -->
 	<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4 mb-4">
 		<div>
-			<h2 class="text-base font-bold text-slate-900">Monthly Revenue Performance</h2>
-			<p class="text-xs text-slate-500">Invoicing revenue vs sales targets across the last 12 months (in TZS).</p>
+			<h2 class="text-base font-bold text-slate-900">Revenue Performance Curve</h2>
+			<p class="text-xs text-slate-500">Invoicing revenue vs sales targets across the selected period (in TZS).</p>
 		</div>
 
 		<!-- Legends -->

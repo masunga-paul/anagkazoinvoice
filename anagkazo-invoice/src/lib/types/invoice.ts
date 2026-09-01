@@ -25,6 +25,9 @@ export interface InvoiceFormData {
 	notes: string;
 	paymentDetailId?: string;
 	paymentDetail?: PaymentDetail;
+	createdAt?: string;
+	updatedAt?: string;
+	createdBy?: string;
 }
 
 export interface CompanyDetails {

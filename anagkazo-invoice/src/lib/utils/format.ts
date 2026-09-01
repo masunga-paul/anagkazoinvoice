@@ -54,6 +54,30 @@ export function formatDisplayDate(dateStr: string): string {
 }
 
 /**
+ * Format ISO timestamp into clean display: e.g. "01 Mar 2026, 05:30"
+ */
+export function formatTimestamp(isoStr?: string | null): string {
+	if (!isoStr) return '—';
+	try {
+		const d = new Date(isoStr);
+		if (isNaN(d.getTime())) return isoStr;
+		const datePart = new Intl.DateTimeFormat('en-GB', {
+			day: '2-digit',
+			month: 'short',
+			year: 'numeric'
+		}).format(d);
+		const timePart = new Intl.DateTimeFormat('en-GB', {
+			hour: '2-digit',
+			minute: '2-digit',
+			hour12: false
+		}).format(d);
+		return `${datePart}, ${timePart}`;
+	} catch {
+		return isoStr;
+	}
+}
+
+/**
  * Generate a unique random ID for items
  */
 export function generateId(): string {

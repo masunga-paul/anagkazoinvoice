@@ -254,6 +254,9 @@ export interface TyreProductStock {
 	reorderLevel: number;
 	location: string;
 	status: 'In Stock' | 'Low Stock' | 'Out of Stock';
+	createdAt?: string;
+	updatedAt?: string;
+	createdBy?: string;
 }
 
 export const MOCK_TYRE_STOCKS: TyreProductStock[] = [

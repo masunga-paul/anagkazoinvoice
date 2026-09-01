@@ -17,4 +17,7 @@ export interface Customer {
 	paymentTerms: string;
 	tin?: string;
 	status: 'Paid' | 'Pending' | 'Overdue';
+	createdAt?: string;
+	updatedAt?: string;
+	createdBy?: string;
 }

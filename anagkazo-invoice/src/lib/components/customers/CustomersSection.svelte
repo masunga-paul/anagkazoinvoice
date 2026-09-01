@@ -3,7 +3,7 @@
   import type { UserRole } from "$lib/types/auth";
   import type { GeneratedInvoiceItem } from "$lib/components/reports/GeneratedInvoicesAudit.svelte";
   import { MOCK_CUSTOMERS } from "$lib/data/mockData";
-  import { formatTZS } from "$lib/utils/format";
+  import { formatTZS, formatTimestamp } from "$lib/utils/format";
   import AddCustomerModal from "./AddCustomerModal.svelte";
   import DeleteConfirmModal from "../common/DeleteConfirmModal.svelte";
   import {
@@ -20,7 +20,8 @@
     ArrowRight,
     ShieldCheck,
     Trash2,
-    Pencil
+    Pencil,
+    Clock
   } from "lucide-svelte";
 
   interface Props {
@@ -370,6 +371,12 @@
                       >{customer.address}</span
                     >
                   </div>
+                  {#if customer.createdAt}
+                    <div class="flex items-center gap-1 text-[11px] text-slate-400 font-mono mt-1">
+                      <Clock class="h-3 w-3 text-slate-400 shrink-0" />
+                      <span>Added: {formatTimestamp(customer.createdAt)} {customer.createdBy ? `• by ${customer.createdBy}` : ''}</span>
+                    </div>
+                  {/if}
                 </td>
 
                 <!-- Contact Person & Phone -->

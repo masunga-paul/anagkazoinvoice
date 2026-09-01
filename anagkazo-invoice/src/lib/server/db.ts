@@ -1,6 +1,10 @@
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
 import { env } from '$env/dynamic/private';
 import type { User, UserRole } from '$lib/types/auth';
+import type { Customer } from '$lib/types/customer';
+import type { TyreProductStock } from '$lib/data/mockData';
+import type { GeneratedInvoiceItem } from '$lib/components/reports/GeneratedInvoicesAudit.svelte';
+import type { PaymentDetail } from '$lib/types/payment';
 import { hashPassword, verifyPassword, generateSignedToken } from './security';
 
 /**
@@ -70,7 +74,8 @@ export async function initializeNeonDatabase(customEnv?: Record<string, any>) {
 				location TEXT,
 				status TEXT DEFAULT 'In Stock',
 				created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-				updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+				updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+				created_by TEXT
 			);
 		`;
 
@@ -94,7 +99,8 @@ export async function initializeNeonDatabase(customEnv?: Record<string, any>) {
 				outstanding_balance BIGINT DEFAULT 0,
 				invoices_count INT DEFAULT 0,
 				created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-				updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+				updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+				created_by TEXT
 			);
 		`;
 
@@ -109,10 +115,60 @@ export async function initializeNeonDatabase(customEnv?: Record<string, any>) {
 				status TEXT NOT NULL DEFAULT 'Pending',
 				items_count INT NOT NULL DEFAULT 1,
 				due_date TEXT,
+				payment_terms TEXT,
+				billing_address TEXT,
+				notes TEXT,
+				tax_rate INT DEFAULT 18,
+				discount BIGINT DEFAULT 0,
+				items_json TEXT,
+				full_data_json TEXT,
+				payment_detail_id TEXT,
+				created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+				created_by TEXT
+			);
+		`;
+
+		// 5. Create Payment Details Table
+		await db`
+			CREATE TABLE IF NOT EXISTS anagkazo_payment_details (
+				id TEXT PRIMARY KEY,
+				bank_name TEXT NOT NULL,
+				account_name TEXT NOT NULL,
+				account_number TEXT NOT NULL,
+				currency TEXT DEFAULT 'TZS',
+				branch TEXT,
+				swift_code TEXT,
+				is_default BOOLEAN DEFAULT false,
 				created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 				updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 			);
 		`;
+
+		// 6. Create System Meta Table
+		await db`
+			CREATE TABLE IF NOT EXISTS anagkazo_system_meta (
+				key TEXT PRIMARY KEY,
+				value TEXT
+			);
+		`;
+
+		// Migration: Add columns if they don't exist yet
+		try {
+			await db`ALTER TABLE anagkazo_customers ADD COLUMN IF NOT EXISTS created_by TEXT;`;
+			await db`ALTER TABLE anagkazo_products ADD COLUMN IF NOT EXISTS created_by TEXT;`;
+			await db`ALTER TABLE anagkazo_invoices ADD COLUMN IF NOT EXISTS payment_terms TEXT;`;
+			await db`ALTER TABLE anagkazo_invoices ADD COLUMN IF NOT EXISTS billing_address TEXT;`;
+			await db`ALTER TABLE anagkazo_invoices ADD COLUMN IF NOT EXISTS notes TEXT;`;
+			await db`ALTER TABLE anagkazo_invoices ADD COLUMN IF NOT EXISTS tax_rate INT DEFAULT 18;`;
+			await db`ALTER TABLE anagkazo_invoices ADD COLUMN IF NOT EXISTS discount BIGINT DEFAULT 0;`;
+			await db`ALTER TABLE anagkazo_invoices ADD COLUMN IF NOT EXISTS items_json TEXT;`;
+			await db`ALTER TABLE anagkazo_invoices ADD COLUMN IF NOT EXISTS full_data_json TEXT;`;
+			await db`ALTER TABLE anagkazo_invoices ADD COLUMN IF NOT EXISTS payment_detail_id TEXT;`;
+			await db`ALTER TABLE anagkazo_invoices ADD COLUMN IF NOT EXISTS created_by TEXT;`;
+		} catch (mErr) {
+			console.warn('[Neon DB] Column migration check notice:', mErr);
+		}
 
 		// Seed initial users if they don't exist yet
 		const existingAdmin = await db`
@@ -373,6 +429,440 @@ export async function updateAdminCredentialsInDB(
 }
 
 /**
+ * CUSTOMERS CRUD
+ */
+export async function getAllCustomersFromDB(customEnv?: Record<string, any>): Promise<Customer[]> {
+	try {
+		await initializeNeonDatabase(customEnv);
+		const db = getSql(customEnv);
+		const rows = await db`
+			SELECT id, name, company_name, contact_person, email, phone, address, city, 
+			       customer_type, credit_limit, payment_terms, tin, status, total_purchases, 
+			       outstanding_balance, invoices_count, created_at, updated_at, created_by
+			FROM anagkazo_customers
+			ORDER BY created_at DESC;
+		`;
+		return rows.map((r: any) => ({
+			id: r.id,
+			name: r.name,
+			companyName: r.company_name,
+			contactPerson: r.contact_person,
+			email: r.email,
+			phone: r.phone,
+			address: r.address,
+			city: r.city,
+			customerType: r.customer_type,
+			creditLimit: Number(r.credit_limit) || 0,
+			paymentTerms: r.payment_terms || 'Net 14',
+			tin: r.tin || '',
+			status: r.status || 'Paid',
+			totalPurchases: Number(r.total_purchases) || 0,
+			outstandingBalance: Number(r.outstanding_balance) || 0,
+			invoicesCount: Number(r.invoices_count) || 0,
+			createdAt: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString(),
+			updatedAt: r.updated_at ? new Date(r.updated_at).toISOString() : new Date().toISOString(),
+			createdBy: r.created_by || 'Admin'
+		}));
+	} catch (error) {
+		console.error('[Neon DB] Error fetching customers:', error);
+		return [];
+	}
+}
+
+export async function saveCustomerToDB(customer: Customer, customEnv?: Record<string, any>, userRole = 'Admin'): Promise<boolean> {
+	try {
+		await initializeNeonDatabase(customEnv);
+		const db = getSql(customEnv);
+		await db`
+			INSERT INTO anagkazo_customers (
+				id, name, company_name, contact_person, email, phone, address, city,
+				customer_type, credit_limit, payment_terms, tin, status, total_purchases,
+				outstanding_balance, invoices_count, created_by, updated_at
+			) VALUES (
+				${customer.id},
+				${customer.name},
+				${customer.companyName || customer.name},
+				${customer.contactPerson},
+				${customer.email},
+				${customer.phone},
+				${customer.address},
+				${customer.city},
+				${customer.customerType},
+				${customer.creditLimit || 0},
+				${customer.paymentTerms},
+				${customer.tin || ''},
+				${customer.status || 'Paid'},
+				${customer.totalPurchases || 0},
+				${customer.outstandingBalance || 0},
+				${customer.invoicesCount || 0},
+				${customer.createdBy || userRole},
+				CURRENT_TIMESTAMP
+			)
+			ON CONFLICT (id) DO UPDATE SET
+				name = EXCLUDED.name,
+				company_name = EXCLUDED.company_name,
+				contact_person = EXCLUDED.contact_person,
+				email = EXCLUDED.email,
+				phone = EXCLUDED.phone,
+				address = EXCLUDED.address,
+				city = EXCLUDED.city,
+				customer_type = EXCLUDED.customer_type,
+				credit_limit = EXCLUDED.credit_limit,
+				payment_terms = EXCLUDED.payment_terms,
+				tin = EXCLUDED.tin,
+				status = EXCLUDED.status,
+				total_purchases = EXCLUDED.total_purchases,
+				outstanding_balance = EXCLUDED.outstanding_balance,
+				invoices_count = EXCLUDED.invoices_count,
+				updated_at = CURRENT_TIMESTAMP;
+		`;
+		return true;
+	} catch (error) {
+		console.error('[Neon DB] Error saving customer:', error);
+		return false;
+	}
+}
+
+export async function deleteCustomerFromDB(id: string, customEnv?: Record<string, any>): Promise<boolean> {
+	try {
+		await initializeNeonDatabase(customEnv);
+		const db = getSql(customEnv);
+		await db`DELETE FROM anagkazo_customers WHERE id = ${id};`;
+		return true;
+	} catch (error) {
+		console.error('[Neon DB] Error deleting customer:', error);
+		return false;
+	}
+}
+
+export async function deleteAllCustomersFromDB(customEnv?: Record<string, any>): Promise<boolean> {
+	try {
+		await initializeNeonDatabase(customEnv);
+		const db = getSql(customEnv);
+		await db`DELETE FROM anagkazo_customers;`;
+		return true;
+	} catch (error) {
+		console.error('[Neon DB] Error deleting all customers:', error);
+		return false;
+	}
+}
+
+/**
+ * PRODUCTS / STOCKS CRUD
+ */
+export async function getAllProductsFromDB(customEnv?: Record<string, any>): Promise<TyreProductStock[]> {
+	try {
+		await initializeNeonDatabase(customEnv);
+		const db = getSql(customEnv);
+		const rows = await db`
+			SELECT id, sku, brand, model, size, application, unit_price_tzs, stock_quantity,
+			       reorder_level, location, status, created_at, updated_at, created_by
+			FROM anagkazo_products
+			ORDER BY brand ASC, model ASC;
+		`;
+		return rows.map((r: any) => ({
+			id: r.id,
+			sku: r.sku,
+			brand: r.brand,
+			model: r.model,
+			size: r.size,
+			application: r.application || '',
+			unitPriceTZS: Number(r.unit_price_tzs) || 0,
+			stockQuantity: Number(r.stock_quantity) || 0,
+			reorderLevel: Number(r.reorder_level) || 10,
+			location: r.location || '',
+			status: r.status as TyreProductStock['status'],
+			createdAt: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString(),
+			updatedAt: r.updated_at ? new Date(r.updated_at).toISOString() : new Date().toISOString(),
+			createdBy: r.created_by || 'Admin'
+		}));
+	} catch (error) {
+		console.error('[Neon DB] Error fetching products:', error);
+		return [];
+	}
+}
+
+export async function saveProductToDB(product: TyreProductStock, customEnv?: Record<string, any>, userRole = 'Admin'): Promise<boolean> {
+	try {
+		await initializeNeonDatabase(customEnv);
+		const db = getSql(customEnv);
+		await db`
+			INSERT INTO anagkazo_products (
+				id, sku, brand, model, size, application, unit_price_tzs, stock_quantity,
+				reorder_level, location, status, created_by, updated_at
+			) VALUES (
+				${product.id},
+				${product.sku},
+				${product.brand},
+				${product.model},
+				${product.size},
+				${product.application || ''},
+				${product.unitPriceTZS || 0},
+				${product.stockQuantity || 0},
+				${product.reorderLevel || 10},
+				${product.location || ''},
+				${product.status || 'In Stock'},
+				${product.createdBy || userRole},
+				CURRENT_TIMESTAMP
+			)
+			ON CONFLICT (id) DO UPDATE SET
+				sku = EXCLUDED.sku,
+				brand = EXCLUDED.brand,
+				model = EXCLUDED.model,
+				size = EXCLUDED.size,
+				application = EXCLUDED.application,
+				unit_price_tzs = EXCLUDED.unit_price_tzs,
+				stock_quantity = EXCLUDED.stock_quantity,
+				reorder_level = EXCLUDED.reorder_level,
+				location = EXCLUDED.location,
+				status = EXCLUDED.status,
+				updated_at = CURRENT_TIMESTAMP;
+		`;
+		return true;
+	} catch (error) {
+		console.error('[Neon DB] Error saving product:', error);
+		return false;
+	}
+}
+
+export async function deleteProductFromDB(id: string, customEnv?: Record<string, any>): Promise<boolean> {
+	try {
+		await initializeNeonDatabase(customEnv);
+		const db = getSql(customEnv);
+		await db`DELETE FROM anagkazo_products WHERE id = ${id};`;
+		return true;
+	} catch (error) {
+		console.error('[Neon DB] Error deleting product:', error);
+		return false;
+	}
+}
+
+export async function deleteAllProductsFromDB(customEnv?: Record<string, any>): Promise<boolean> {
+	try {
+		await initializeNeonDatabase(customEnv);
+		const db = getSql(customEnv);
+		await db`DELETE FROM anagkazo_products;`;
+		return true;
+	} catch (error) {
+		console.error('[Neon DB] Error deleting all products:', error);
+		return false;
+	}
+}
+
+/**
+ * INVOICES CRUD
+ */
+export async function getAllInvoicesFromDB(customEnv?: Record<string, any>): Promise<GeneratedInvoiceItem[]> {
+	try {
+		await initializeNeonDatabase(customEnv);
+		const db = getSql(customEnv);
+		const rows = await db`
+			SELECT id, customer, date, due_date, amount_tzs, paid_tzs, status, items_count,
+			       payment_terms, billing_address, notes, tax_rate, discount, items_json,
+			       full_data_json, payment_detail_id, created_at, updated_at, created_by
+			FROM anagkazo_invoices
+			ORDER BY created_at DESC;
+		`;
+		return rows.map((r: any) => {
+			let items = [];
+			let fullData = undefined;
+			try {
+				if (r.items_json) items = JSON.parse(r.items_json);
+			} catch {}
+			try {
+				if (r.full_data_json) fullData = JSON.parse(r.full_data_json);
+			} catch {}
+
+			return {
+				id: r.id,
+				customer: r.customer,
+				date: r.date,
+				dueDate: r.due_date,
+				amount: Number(r.amount_tzs) || 0,
+				status: r.status,
+				itemsCount: Number(r.items_count) || (items.length || 1),
+				paymentTerms: r.payment_terms || 'Net 14',
+				billingAddress: r.billing_address || '',
+				notes: r.notes || '',
+				discount: Number(r.discount) || 0,
+				taxRate: Number(r.tax_rate) || 18,
+				items,
+				fullData,
+				paymentDetailId: r.payment_detail_id || undefined,
+				createdAt: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString(),
+				updatedAt: r.updated_at ? new Date(r.updated_at).toISOString() : new Date().toISOString(),
+				createdBy: r.created_by || 'Admin / Staff'
+			};
+		});
+	} catch (error) {
+		console.error('[Neon DB] Error fetching invoices:', error);
+		return [];
+	}
+}
+
+export async function saveInvoiceToDB(invoice: GeneratedInvoiceItem, customEnv?: Record<string, any>, userRole = 'Staff'): Promise<boolean> {
+	try {
+		await initializeNeonDatabase(customEnv);
+		const db = getSql(customEnv);
+		const itemsJson = invoice.items ? JSON.stringify(invoice.items) : null;
+		const fullDataJson = invoice.fullData ? JSON.stringify(invoice.fullData) : null;
+		const paidAmount = invoice.status === 'Paid' ? (Number(invoice.amount) || 0) : 0;
+
+		await db`
+			INSERT INTO anagkazo_invoices (
+				id, customer, date, due_date, amount_tzs, paid_tzs, status, items_count,
+				payment_terms, billing_address, notes, tax_rate, discount, items_json,
+				full_data_json, payment_detail_id, created_by, updated_at
+			) VALUES (
+				${invoice.id},
+				${invoice.customer},
+				${invoice.date},
+				${invoice.dueDate || null},
+				${Number(invoice.amount) || 0},
+				${paidAmount},
+				${invoice.status || 'Pending'},
+				${invoice.itemsCount || (invoice.items?.length || 1)},
+				${invoice.paymentTerms || 'Net 14'},
+				${invoice.billingAddress || ''},
+				${invoice.notes || ''},
+				${invoice.taxRate || 18},
+				${invoice.discount || 0},
+				${itemsJson},
+				${fullDataJson},
+				${invoice.paymentDetailId || null},
+				${invoice.createdBy || userRole},
+				CURRENT_TIMESTAMP
+			)
+			ON CONFLICT (id) DO UPDATE SET
+				customer = EXCLUDED.customer,
+				date = EXCLUDED.date,
+				due_date = EXCLUDED.due_date,
+				amount_tzs = EXCLUDED.amount_tzs,
+				paid_tzs = EXCLUDED.paid_tzs,
+				status = EXCLUDED.status,
+				items_count = EXCLUDED.items_count,
+				payment_terms = EXCLUDED.payment_terms,
+				billing_address = EXCLUDED.billing_address,
+				notes = EXCLUDED.notes,
+				tax_rate = EXCLUDED.tax_rate,
+				discount = EXCLUDED.discount,
+				items_json = EXCLUDED.items_json,
+				full_data_json = EXCLUDED.full_data_json,
+				payment_detail_id = EXCLUDED.payment_detail_id,
+				updated_at = CURRENT_TIMESTAMP;
+		`;
+		return true;
+	} catch (error) {
+		console.error('[Neon DB] Error saving invoice:', error);
+		return false;
+	}
+}
+
+export async function deleteInvoiceFromDB(id: string, customEnv?: Record<string, any>): Promise<boolean> {
+	try {
+		await initializeNeonDatabase(customEnv);
+		const db = getSql(customEnv);
+		await db`DELETE FROM anagkazo_invoices WHERE id = ${id};`;
+		return true;
+	} catch (error) {
+		console.error('[Neon DB] Error deleting invoice:', error);
+		return false;
+	}
+}
+
+export async function deleteAllInvoicesFromDB(customEnv?: Record<string, any>): Promise<boolean> {
+	try {
+		await initializeNeonDatabase(customEnv);
+		const db = getSql(customEnv);
+		await db`DELETE FROM anagkazo_invoices;`;
+		return true;
+	} catch (error) {
+		console.error('[Neon DB] Error deleting all invoices:', error);
+		return false;
+	}
+}
+
+/**
+ * PAYMENT DETAILS CRUD
+ */
+export async function getAllPaymentDetailsFromDB(customEnv?: Record<string, any>): Promise<PaymentDetail[]> {
+	try {
+		await initializeNeonDatabase(customEnv);
+		const db = getSql(customEnv);
+		const rows = await db`
+			SELECT id, bank_name, account_name, account_number, currency, branch, swift_code, is_default, created_at, updated_at
+			FROM anagkazo_payment_details
+			ORDER BY is_default DESC, created_at ASC;
+		`;
+		return rows.map((r: any) => ({
+			id: r.id,
+			bankName: r.bank_name,
+			accountName: r.account_name,
+			accountNumber: r.account_number,
+			currency: r.currency || 'TZS',
+			branch: r.branch || '',
+			swiftCode: r.swift_code || '',
+			isDefault: Boolean(r.is_default),
+			createdAt: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString(),
+			updatedAt: r.updated_at ? new Date(r.updated_at).toISOString() : new Date().toISOString()
+		}));
+	} catch (error) {
+		console.error('[Neon DB] Error fetching payment details:', error);
+		return [];
+	}
+}
+
+export async function savePaymentDetailToDB(detail: PaymentDetail, customEnv?: Record<string, any>): Promise<boolean> {
+	try {
+		await initializeNeonDatabase(customEnv);
+		const db = getSql(customEnv);
+		if (detail.isDefault) {
+			await db`UPDATE anagkazo_payment_details SET is_default = false;`;
+		}
+		await db`
+			INSERT INTO anagkazo_payment_details (
+				id, bank_name, account_name, account_number, currency, branch, swift_code, is_default, updated_at
+			) VALUES (
+				${detail.id},
+				${detail.bankName},
+				${detail.accountName},
+				${detail.accountNumber},
+				${detail.currency || 'TZS'},
+				${detail.branch || ''},
+				${detail.swiftCode || ''},
+				${Boolean(detail.isDefault)},
+				CURRENT_TIMESTAMP
+			)
+			ON CONFLICT (id) DO UPDATE SET
+				bank_name = EXCLUDED.bank_name,
+				account_name = EXCLUDED.account_name,
+				account_number = EXCLUDED.account_number,
+				currency = EXCLUDED.currency,
+				branch = EXCLUDED.branch,
+				swift_code = EXCLUDED.swift_code,
+				is_default = EXCLUDED.is_default,
+				updated_at = CURRENT_TIMESTAMP;
+		`;
+		return true;
+	} catch (error) {
+		console.error('[Neon DB] Error saving payment detail:', error);
+		return false;
+	}
+}
+
+export async function deletePaymentDetailFromDB(id: string, customEnv?: Record<string, any>): Promise<boolean> {
+	try {
+		await initializeNeonDatabase(customEnv);
+		const db = getSql(customEnv);
+		await db`DELETE FROM anagkazo_payment_details WHERE id = ${id};`;
+		return true;
+	} catch (error) {
+		console.error('[Neon DB] Error deleting payment detail:', error);
+		return false;
+	}
+}
+
+/**
  * Wipes all customers, products, and invoices from Neon database while preserving admin and staff user accounts.
  */
 export async function wipeAllDataFromDB(customEnv?: Record<string, any>): Promise<boolean> {
@@ -392,6 +882,11 @@ export async function wipeAllDataFromDB(customEnv?: Record<string, any>): Promis
 					DELETE FROM anagkazo_products;
 				END IF;
 			END $$;
+		`;
+		// Record that user deliberately wiped data
+		await db`
+			INSERT INTO anagkazo_system_meta (key, value) VALUES ('wiped', 'true')
+			ON CONFLICT (key) DO UPDATE SET value = 'true';
 		`;
 		console.log('[Neon DB] Successfully deleted all customers, products, and invoices from PostgreSQL while preserving user credentials.');
 		return true;

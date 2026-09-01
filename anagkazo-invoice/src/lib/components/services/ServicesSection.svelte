@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { UserRole } from '$lib/types/auth';
 	import { MOCK_TYRE_STOCKS, type TyreProductStock } from '$lib/data/mockData';
-	import { formatTZS } from '$lib/utils/format';
+	import { formatTZS, formatTimestamp } from '$lib/utils/format';
 	import AddProductModal from './AddProductModal.svelte';
 	import EditProductModal from './EditProductModal.svelte';
 	import DeleteConfirmModal from '../common/DeleteConfirmModal.svelte';
@@ -13,7 +13,8 @@
 		PackagePlus,
 		Pencil,
 		Trash2,
-		AlertCircle
+		AlertCircle,
+		Clock
 	} from 'lucide-svelte';
 
 	interface Props {
@@ -273,6 +274,12 @@
 								<p class="text-xs sm:text-sm text-slate-600 font-medium mt-1.5 leading-relaxed">
 									{tyre.application}
 								</p>
+								{#if tyre.createdAt}
+									<div class="flex items-center gap-1 text-[11px] text-slate-400 font-mono mt-1">
+										<Clock class="h-3 w-3 text-slate-400 shrink-0" />
+										<span>Added: {formatTimestamp(tyre.createdAt)} {tyre.createdBy ? `• by ${tyre.createdBy}` : ''}</span>
+									</div>
+								{/if}
 							</div>
 
 							<!-- Stock Quantity Indicator -->

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { InvoiceStatus, InvoiceFormData, InvoiceItem } from '$lib/types/invoice';
 	import type { PaymentDetail } from '$lib/types/payment';
-	import { formatTZS, formatDisplayDate } from '$lib/utils/format';
+	import { formatTZS, formatDisplayDate, formatTimestamp } from '$lib/utils/format';
 	import DeleteConfirmModal from '../common/DeleteConfirmModal.svelte';
 	import {
 		FileText,
@@ -36,6 +36,9 @@
 		paymentDetailId?: string;
 		paymentDetail?: PaymentDetail;
 		fullData?: InvoiceFormData;
+		createdAt?: string;
+		updatedAt?: string;
+		createdBy?: string;
 	}
 
 	interface Props {
@@ -282,8 +285,14 @@
 									</span>
 								{/if}
 							</td>
-							<td class="py-3.5 px-3 font-semibold text-slate-700 text-xs">
-								{formatDisplayDate(inv.date)}
+							<td class="py-3.5 px-3 text-xs">
+								<div class="font-semibold text-slate-800">{formatDisplayDate(inv.date)}</div>
+								{#if inv.createdAt}
+									<div class="text-[10px] text-slate-400 font-mono flex items-center gap-1 mt-0.5">
+										<Clock class="h-3 w-3 text-slate-400 shrink-0" />
+										<span>{formatTimestamp(inv.createdAt)} {inv.createdBy ? `• ${inv.createdBy}` : ''}</span>
+									</div>
+								{/if}
 							</td>
 							<td class="py-3.5 px-3 text-center font-mono font-bold text-slate-800 text-xs sm:text-sm">
 								{inv.itemsCount} {inv.itemsCount === 1 ? 'item' : 'items'}
