@@ -5,9 +5,5 @@
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
-	"main": ".svelte-kit/cloudflare/_worker.js",
-	"assets": {
-		"binding": "ASSETS",
-		"directory": ".svelte-kit/cloudflare"
-	}
+	"pages_build_output_dir": ".svelte-kit/cloudflare"
 }
