@@ -7,9 +7,10 @@
     "build": "pnpm --filter anagkazo-invoice build",
     "preview": "pnpm --filter anagkazo-invoice preview",
     "check": "pnpm --filter anagkazo-invoice check",
-    "deploy": "pnpm --filter anagkazo-invoice deploy"
+    "deploy": "wrangler pages deploy anagkazo-invoice/.svelte-kit/cloudflare --project-name=anagkazoinvoice"
   },
   "devDependencies": {
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "wrangler": "^4.127.1"
   }
 }

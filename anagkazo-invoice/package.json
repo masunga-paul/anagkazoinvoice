@@ -11,7 +11,7 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"test:unit": "vitest",
-		"deploy": "vite build && wrangler pages deploy .svelte-kit/cloudflare"
+		"deploy": "vite build && wrangler pages deploy .svelte-kit/cloudflare --project-name=anagkazoinvoice"
 	},
 	"devDependencies": {
 		"@lucide/svelte": "^1.35.0",
