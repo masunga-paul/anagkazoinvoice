@@ -1,0 +1,20 @@
+{
+  "name": "anagkazoinvoicesystem-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter anagkazo-invoice dev",
+    "build": "pnpm --filter anagkazo-invoice build",
+    "preview": "pnpm --filter anagkazo-invoice preview",
+    "check": "pnpm --filter anagkazo-invoice check",
+    "deploy": "pnpm --filter anagkazo-invoice deploy"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.11"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "core-js"
+    ]
+  }
+}
