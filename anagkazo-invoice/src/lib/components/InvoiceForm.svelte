@@ -670,8 +670,7 @@
               {#each stocks as s}
                 {@const avail = getEffectiveAvailableStock(s, form.items)}
                 <option value={s.id} disabled={avail <= 0}>
-                  {s.brand}
-                  {s.model} - {s.size} ({formatTZS(s.unitPriceTZS)})
+                  {s.brand} {s.model} - {s.size} ({formatTZS(s.unitPriceTZS)}) — [{avail <= 0 ? 'Out of Stock' : `${avail} in stock`}]
                 </option>
               {/each}
             </select>
