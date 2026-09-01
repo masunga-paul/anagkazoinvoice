@@ -308,12 +308,12 @@
 
         <!-- Navigation Tabs -->
         <div
-          class="flex items-center gap-2 mt-5 border-b border-navy-800/80 -mb-2 pb-2"
+          class="flex items-center gap-2 mt-5 border-b border-navy-800/80 -mb-2 pb-2 overflow-x-auto scrollbar-none"
         >
           <button
             type="button"
             onclick={() => (activeTab = "admin")}
-            class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-extrabold transition cursor-pointer {activeTab ===
+            class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-extrabold transition cursor-pointer shrink-0 {activeTab ===
             'admin'
               ? 'bg-sky-500 text-navy-950 shadow-xs'
               : 'text-slate-200 hover:text-white hover:bg-white/10'}"
@@ -330,7 +330,7 @@
           <button
             type="button"
             onclick={() => (activeTab = "staff")}
-            class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-extrabold transition cursor-pointer {activeTab ===
+            class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-extrabold transition cursor-pointer shrink-0 {activeTab ===
             'staff'
               ? 'bg-sky-500 text-navy-950 shadow-xs'
               : 'text-slate-200 hover:text-white hover:bg-white/10'}"

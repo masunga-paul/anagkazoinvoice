@@ -65,13 +65,11 @@
 
   const discountAmount = $derived(Number(form.discount) || 0);
 
-  const taxableBase = $derived(Math.max(0, subtotal - discountAmount));
-
   const taxRate = $derived(Number(form.taxRate) || 0);
 
-  const taxAmount = $derived(taxableBase * (taxRate / 100));
+  const taxAmount = $derived(subtotal * (taxRate / 100));
 
-  const grandTotal = $derived(taxableBase + taxAmount);
+  const grandTotal = $derived(Math.max(0, subtotal + taxAmount - discountAmount));
 
   // Dynamic receiving payment detail assigned to this invoice
   const activePayment = $derived.by(() => {
@@ -138,7 +136,7 @@
   <!-- Physical Paper Simulation Container -->
   <div
     id="invoice-printable-area"
-    class="invoice-paper relative overflow-hidden mx-auto w-full max-w-[620px] rounded-xl border border-slate-200/80 bg-white p-6 sm:p-8 md:p-10 shadow-md transition-all duration-300 text-slate-800"
+    class="invoice-paper relative overflow-hidden mx-auto w-full max-w-[620px] rounded-xl border border-slate-200/80 bg-white p-4 sm:p-8 md:p-10 shadow-md transition-all duration-300 text-slate-800"
   >
     <!-- Subtle Center Watermark Logo -->
     <div
@@ -153,38 +151,38 @@
 
     <!-- Paper Header: Brand Logo & Title -->
     <div
-      class="relative z-10 flex items-start justify-between border-b border-slate-200 pb-5"
+      class="relative z-10 flex flex-col sm:flex-row sm:items-start justify-between border-b border-slate-200 pb-5 gap-3.5 sm:gap-0"
     >
-      <div class="flex items-center gap-3.5">
+      <div class="flex items-center gap-3 sm:gap-3.5">
         <img
           src={logoImg}
           alt="Anagkazo Autoparts"
-          class="h-13 sm:h-15 w-auto object-contain max-w-[170px]"
+          class="h-11 sm:h-15 w-auto object-contain max-w-[130px] sm:max-w-[170px]"
         />
-        <div class="border-l-2 border-slate-300 pl-3">
+        <div class="border-l-2 border-slate-300 pl-2.5 sm:pl-3">
           <h3
-            class="text-sm sm:text-base font-extrabold tracking-tight text-navy-950 leading-tight"
+            class="text-xs sm:text-base font-extrabold tracking-tight text-navy-950 leading-tight"
           >
             {COMPANY_INFO.name}
           </h3>
-          <p class="text-xs font-semibold text-slate-600">
+          <p class="text-[11px] sm:text-xs font-semibold text-slate-600">
             {COMPANY_INFO.tagline}
           </p>
-          <p class="text-xs text-slate-600 font-mono font-medium mt-0.5">
+          <p class="text-[11px] sm:text-xs text-slate-600 font-mono font-medium mt-0.5">
             TIN: <strong class="text-slate-900">{COMPANY_INFO.tin}</strong>
             &bull; TEL: <strong class="text-slate-900">0789345040</strong>
           </p>
         </div>
       </div>
 
-      <div class="text-right flex flex-col items-end">
+      <div class="text-left sm:text-right flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
         <span
           class="inline-block rounded-md bg-navy-900 px-3.5 py-1 text-xs sm:text-sm font-black text-white tracking-wider"
         >
           INVOICE
         </span>
         <div
-          class="text-xs sm:text-sm font-extrabold text-slate-900 mt-1.5 font-mono"
+          class="text-xs sm:text-sm font-extrabold text-slate-900 sm:mt-1.5 font-mono"
         >
           #{form.invoiceNumber || "INV-2026-0842"}
         </div>
@@ -192,48 +190,48 @@
     </div>
 
     <!-- Meta Grid (Issue Date, Due Date, Payment Terms) -->
-    <div class="grid grid-cols-3 gap-3 border-b border-slate-200 py-4 text-xs">
+    <div class="grid grid-cols-3 gap-2 sm:gap-3 border-b border-slate-200 py-3 sm:py-4 text-xs">
       <div>
         <span
-          class="block text-xs font-bold text-slate-600 uppercase tracking-wider"
+          class="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider"
         >
           Issue Date
         </span>
         <span
-          class="font-extrabold text-slate-900 text-xs sm:text-sm mt-0.5 block"
+          class="font-extrabold text-slate-900 text-[11px] sm:text-sm mt-0.5 block"
         >
           {formatDisplayDate(form.issueDate)}
         </span>
       </div>
       <div>
         <span
-          class="block text-xs font-bold text-slate-600 uppercase tracking-wider"
+          class="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider"
         >
           Due Date
         </span>
         <span
-          class="font-extrabold text-slate-900 text-xs sm:text-sm mt-0.5 block"
+          class="font-extrabold text-slate-900 text-[11px] sm:text-sm mt-0.5 block"
         >
           {formatDisplayDate(form.dueDate)}
         </span>
       </div>
       <div>
         <span
-          class="block text-xs font-bold text-slate-600 uppercase tracking-wider"
+          class="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider"
         >
-          Payment Terms
+          Terms
         </span>
         <span
-          class="font-extrabold text-slate-900 text-xs sm:text-sm mt-0.5 block"
+          class="font-extrabold text-slate-900 text-[11px] sm:text-sm mt-0.5 block"
         >
-          {form.paymentTerms || "Net 14"}
+          {form.paymentTerms || "Net 30 Days"}
         </span>
       </div>
     </div>
 
-    <!-- Addresses Section (Billed by & Billed to) -->
+    <!-- Bill Parties Grid (Billed By & Billed To) -->
     <div
-      class="grid grid-cols-1 sm:grid-cols-2 gap-5 border-b border-slate-200 py-4 text-xs"
+      class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 border-b border-slate-200 py-4 text-xs"
     >
       <!-- Billed By -->
       <div>
@@ -276,8 +274,8 @@
     </div>
 
     <!-- Items Table -->
-    <div class="py-4">
-      <table class="w-full text-left text-xs sm:text-sm border-collapse">
+    <div class="py-4 overflow-x-auto">
+      <table class="w-full text-left text-xs sm:text-sm border-collapse min-w-[340px]">
         <thead>
           <tr
             class="border-b-2 border-slate-300 text-xs font-black uppercase tracking-wider text-slate-700"
@@ -411,19 +409,19 @@
           >
         </div>
 
-        {#if discountAmount > 0}
-          <div class="flex items-center justify-between text-sky-700 font-bold">
-            <span>Discount</span>
-            <span class="font-mono">- {formatTZS(discountAmount)}</span>
-          </div>
-        {/if}
-
         <div class="flex items-center justify-between text-slate-700">
           <span class="font-semibold">Tax (VAT {taxRate}%)</span>
           <span class="font-mono font-bold text-slate-900"
             >{formatTZS(taxAmount)}</span
           >
         </div>
+
+        {#if discountAmount > 0}
+          <div class="flex items-center justify-between text-sky-700 font-bold">
+            <span>Discount</span>
+            <span class="font-mono">- {formatTZS(discountAmount)}</span>
+          </div>
+        {/if}
 
         <div
           class="border-t-2 border-slate-300 pt-2 flex items-center justify-between text-sm sm:text-base font-black text-navy-950"

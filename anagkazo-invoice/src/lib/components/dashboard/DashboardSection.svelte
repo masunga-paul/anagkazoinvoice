@@ -446,7 +446,7 @@
               </button>
             </div>
           {:else}
-            <table class="w-full text-left text-xs sm:text-sm border-collapse">
+            <table class="w-full text-left text-xs sm:text-sm border-collapse min-w-[640px]">
               <thead>
                 <tr
                   class="border-b-2 border-slate-200 text-xs font-black uppercase tracking-wider text-slate-700 bg-slate-50/70"

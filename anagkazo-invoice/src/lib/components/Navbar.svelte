@@ -77,16 +77,16 @@
       </button>
     </div>
 
-    <!-- Center Navigation Menu (Desktop) -->
+    <!-- Center Navigation Menu (Tablet & Desktop) -->
     {#if currentUser}
       <nav
-        class="hidden md:flex items-center gap-1.5 rounded-full bg-slate-100/90 p-1.5 ring-1 ring-slate-200"
+        class="hidden md:flex items-center gap-1 lg:gap-1.5 rounded-full bg-slate-100/90 p-1 lg:p-1.5 ring-1 ring-slate-200"
       >
         {#each visibleNavItems as item}
           <button
             type="button"
             onclick={() => selectTab(item.id)}
-            class="rounded-full px-4 py-1.5 text-xs sm:text-[13px] font-bold transition-all duration-200 cursor-pointer {activeNav ===
+            class="rounded-full px-2.5 lg:px-3.5 py-1.5 text-xs lg:text-[13px] font-bold transition-all duration-200 cursor-pointer whitespace-nowrap {activeNav ===
             item.id
               ? 'bg-navy-900 text-white shadow-xs'
               : 'text-slate-700 hover:text-navy-950 hover:bg-slate-200/80'}"

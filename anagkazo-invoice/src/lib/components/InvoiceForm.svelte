@@ -170,13 +170,14 @@
     ),
   );
 
+  const discountAmount = $derived(Number(form.discount) || 0);
+
   const taxAmount = $derived(
-    Math.max(0, subtotal - (Number(form.discount) || 0)) *
-      ((Number(form.taxRate) || 0) / 100),
+    subtotal * ((Number(form.taxRate) || 0) / 100),
   );
 
   const calculatedTotal = $derived(
-    Math.max(0, subtotal - (Number(form.discount) || 0) + taxAmount),
+    Math.max(0, subtotal + taxAmount - discountAmount),
   );
 
   const selectedCustomerId = $derived(

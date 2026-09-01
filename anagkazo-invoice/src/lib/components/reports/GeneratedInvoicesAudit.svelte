@@ -248,7 +248,7 @@
 
 	<!-- Invoices Table -->
 	<div class="overflow-x-auto">
-		<table class="w-full text-left text-xs sm:text-sm border-collapse">
+		<table class="w-full text-left text-xs sm:text-sm border-collapse min-w-[720px]">
 			<thead>
 				<tr class="border-b-2 border-slate-200 text-xs font-black uppercase tracking-wider text-slate-700 bg-slate-100/70">
 					<th class="py-3 px-3">Invoice Number</th>

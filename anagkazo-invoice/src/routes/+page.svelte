@@ -1096,9 +1096,8 @@
 		formData.items.reduce((acc, item) => acc + (Number(item.qty) || 0) * (Number(item.unitPrice) || 0), 0)
 	);
 	const discountAmount = $derived(Number(formData.discount) || 0);
-	const taxableBase = $derived(Math.max(0, subtotal - discountAmount));
-	const taxAmount = $derived(taxableBase * ((Number(formData.taxRate) || 0) / 100));
-	const grandTotal = $derived(taxableBase + taxAmount);
+	const taxAmount = $derived(subtotal * ((Number(formData.taxRate) || 0) / 100));
+	const grandTotal = $derived(Math.max(0, subtotal + taxAmount - discountAmount));
 </script>
 
 <div class="min-h-screen flex flex-col bg-[#f3f4f8] text-slate-900 justify-between">
