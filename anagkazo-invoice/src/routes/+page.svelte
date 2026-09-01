@@ -60,7 +60,7 @@
 	import { subscribeToSync, broadcastSync } from '$lib/utils/syncBus';
 	import { invoiceSchema } from '$lib/schema/invoice';
 	import { INITIAL_INVOICE_DATA, formatTZS, generateId, getTodayDateStr, getFutureDateStr } from '$lib/utils/format';
-	import { getEffectiveStocksList, getAllocatedQuantity } from '$lib/utils/inventory';
+	import { getAllocatedQuantity } from '$lib/utils/inventory';
 	import { downloadInvoicePDF } from '$lib/utils/pdf';
 	import { getStoredSession, logoutFromNeon } from '$lib/auth/neonAuth';
 	import { CheckCircle2, Send, X, FileText, Download, ShieldAlert, LogIn, Lock } from 'lucide-svelte';
@@ -85,9 +85,6 @@
 
 	// Svelte 5 State Rune for Form Data
 	let formData = $state<InvoiceFormData>(JSON.parse(JSON.stringify(INITIAL_INVOICE_DATA)));
-
-	// Derived real-time diminished tyre stocks reflecting active line items in formData
-	const effectiveStocksList = $derived(getEffectiveStocksList(tyreStocksList, formData.items));
 
 	// Auto-persist updates to localStorage ONLY after client hydration
 	$effect(() => {
@@ -487,51 +484,21 @@
 			if (targetStatus === 'Paid') {
 				targetCustomer.status = 'Paid';
 				targetCustomer.outstandingBalance = 0;
-				if (total > 0) {
-					targetCustomer.totalPurchases = (targetCustomer.totalPurchases || 0) + (existingIndex === -1 ? total : 0);
-				}
 			} else if (targetStatus === 'Overdue') {
 				targetCustomer.status = 'Overdue';
-				targetCustomer.outstandingBalance = total > 0 ? total : (targetCustomer.outstandingBalance || 15000000);
-				if (total > 0) {
-					targetCustomer.totalPurchases = (targetCustomer.totalPurchases || 0) + (existingIndex === -1 ? total : 0);
-				}
+				targetCustomer.outstandingBalance = total > 0 ? total : 0;
 			} else {
 				targetCustomer.status = 'Pending';
-				targetCustomer.outstandingBalance = total > 0 ? total : (targetCustomer.outstandingBalance || 10000000);
-				if (total > 0) {
-					targetCustomer.totalPurchases = (targetCustomer.totalPurchases || 0) + (existingIndex === -1 ? total : 0);
-				}
+				targetCustomer.outstandingBalance = total > 0 ? total : 0;
 			}
 
 			customersList[custIndex] = targetCustomer;
 			customersList = [...customersList];
 			saveStoredCustomers(customersList);
+			syncSingleCustomer(targetCustomer, currentUser?.role || 'Admin');
 		}
 
-		// 3. Commit permanent stock deduction to warehouse inventory
-		if (data.items && data.items.length > 0) {
-			let stocksChanged = false;
-			for (const item of data.items) {
-				const qty = Number(item.qty) || 0;
-				if (qty <= 0) continue;
-				const matchedIdx = tyreStocksList.findIndex(
-					s => (item.stockId && s.id === item.stockId) ||
-					     (item.sku && s.sku === item.sku) ||
-					     (s.sku && item.description.includes(s.sku))
-				);
-				if (matchedIdx !== -1) {
-					const stock = tyreStocksList[matchedIdx];
-					stock.stockQuantity = Math.max(0, stock.stockQuantity - qty);
-					stock.status = stock.stockQuantity === 0 ? 'Out of Stock' : (stock.stockQuantity <= (stock.reorderLevel || 10) ? 'Low Stock' : 'In Stock');
-					stocksChanged = true;
-				}
-			}
-			if (stocksChanged) {
-				tyreStocksList = [...tyreStocksList];
-				saveStoredStocks(tyreStocksList);
-			}
-		}
+		// Product stock quantities remain exact and un-tampered when editing invoices or changing status
 	}
 
 	// Action: Delete Invoice from records
@@ -1169,7 +1136,7 @@
 				{#if currentUser.role === 'admin'}
 					<DashboardSection
 						invoices={invoicesList}
-						stocks={effectiveStocksList}
+						stocks={tyreStocksList}
 						customers={customersList}
 						paymentDetails={paymentDetailsList}
 						onNavigateTab={(tab) => currentTab = tab}
