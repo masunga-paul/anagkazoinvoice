@@ -60,7 +60,7 @@
 	import { subscribeToSync, broadcastSync } from '$lib/utils/syncBus';
 	import { invoiceSchema } from '$lib/schema/invoice';
 	import { INITIAL_INVOICE_DATA, formatTZS, generateId, getTodayDateStr, getFutureDateStr } from '$lib/utils/format';
-	import { getEffectiveStocksList, getAllocatedQuantity } from '$lib/utils/inventory';
+	import { getAllocatedQuantity } from '$lib/utils/inventory';
 	import { downloadInvoicePDF } from '$lib/utils/pdf';
 	import { getStoredSession, logoutFromNeon } from '$lib/auth/neonAuth';
 	import { CheckCircle2, Send, X, FileText, Download, ShieldAlert, LogIn, Lock } from 'lucide-svelte';
@@ -85,9 +85,6 @@
 
 	// Svelte 5 State Rune for Form Data
 	let formData = $state<InvoiceFormData>(JSON.parse(JSON.stringify(INITIAL_INVOICE_DATA)));
-
-	// Derived real-time diminished tyre stocks reflecting active line items in formData
-	const effectiveStocksList = $derived(getEffectiveStocksList(tyreStocksList, formData.items));
 
 	// Auto-persist updates to localStorage ONLY after client hydration
 	$effect(() => {
@@ -395,33 +392,29 @@
 		const savedInvoiceNumber = formData.invoiceNumber || 'INV-2026';
 		const savedCustomerName = formData.customerName || 'Customer';
 
-		// Check if this is a brand new invoice (not an existing invoice being edited)
-		const isNewInvoice = !invoicesList.some(i => i.id === formData.invoiceNumber);
+		// Find previous invoice in list if editing existing record
+		const existingIndex = invoicesList.findIndex(i => i.id === formData.invoiceNumber);
+		const prevInvoice = existingIndex !== -1 ? invoicesList[existingIndex] : null;
 
-		// 1. If brand new invoice, commit permanent stock deductions to warehouse inventory & Neon PostgreSQL
-		if (isNewInvoice && formData.items && formData.items.length > 0) {
-			let stocksChanged = false;
-			for (const item of formData.items) {
-				const qty = Number(item.qty) || 0;
-				if (qty <= 0) continue;
-				const matchedIdx = tyreStocksList.findIndex(
-					s => (item.stockId && s.id === item.stockId) ||
-					     (item.sku && s.sku === item.sku) ||
-					     (s.sku && item.description.includes(s.sku))
-				);
-				if (matchedIdx !== -1) {
-					const stock = tyreStocksList[matchedIdx];
-					stock.stockQuantity = Math.max(0, stock.stockQuantity - qty);
-					stock.status = stock.stockQuantity === 0 ? 'Out of Stock' : (stock.stockQuantity <= (stock.reorderLevel || 10) ? 'Low Stock' : 'In Stock');
-					stock.updatedAt = new Date().toISOString();
-					syncSingleProduct(stock, currentUser?.role || 'Admin');
-					stocksChanged = true;
-				}
+		// 1. Commit stock adjustments dynamically when user clicks Update & Sync
+		let stocksChanged = false;
+		for (const stock of tyreStocksList) {
+			const oldAllocated = prevInvoice && prevInvoice.items ? getAllocatedQuantity(stock, prevInvoice.items) : 0;
+			const newAllocated = formData.items ? getAllocatedQuantity(stock, formData.items) : 0;
+			const delta = newAllocated - oldAllocated;
+
+			if (delta !== 0) {
+				stock.stockQuantity = Math.max(0, stock.stockQuantity - delta);
+				stock.status = stock.stockQuantity === 0 ? 'Out of Stock' : (stock.stockQuantity <= (stock.reorderLevel || 10) ? 'Low Stock' : 'In Stock');
+				stock.updatedAt = new Date().toISOString();
+				syncSingleProduct(stock, currentUser?.role || 'Admin');
+				stocksChanged = true;
 			}
-			if (stocksChanged) {
-				tyreStocksList = [...tyreStocksList];
-				saveStoredStocks(tyreStocksList);
-			}
+		}
+
+		if (stocksChanged) {
+			tyreStocksList = [...tyreStocksList];
+			saveStoredStocks(tyreStocksList);
 		}
 
 		// 2. Synchronize invoice and customer records
@@ -453,10 +446,10 @@
 		formErrors = {};
 
 		showToast(
-			`Invoice ${savedInvoiceNumber} saved for ${savedCustomerName}! Form reset and ready for new invoice (${nextInvoiceNumber}).`,
+			`Invoice ${savedInvoiceNumber} updated and synced successfully for ${savedCustomerName}! All records and product stocks updated.`,
 			'success',
 			'CREATE',
-			'Ready for New Invoice'
+			'Invoice Updated & Synced'
 		);
 	}
 
@@ -1248,7 +1241,7 @@
 			{:else if currentTab === 'Services'}
 				<ServicesSection
 					userRole={currentUser.role}
-					stocks={effectiveStocksList}
+					stocks={tyreStocksList}
 					onAddServiceToInvoice={handleAddServiceToInvoice}
 					onAddProduct={(newProd) => {
 						newProd.createdAt = newProd.createdAt || new Date().toISOString();
@@ -1281,7 +1274,7 @@
 							bind:form={formData}
 							errors={formErrors}
 							customers={customersList}
-							stocks={effectiveStocksList}
+							stocks={tyreStocksList}
 							paymentDetails={paymentDetailsList}
 							onStatusChange={handleStatusChange}
 							onSaveInvoice={handleSaveAndUpdateInvoice}
