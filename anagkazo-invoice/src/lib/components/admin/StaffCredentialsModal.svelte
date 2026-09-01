@@ -360,7 +360,8 @@
             </div>
             <div class="min-w-0">
               <div class="flex items-center gap-2">
-                <span class="text-xs sm:text-sm font-black text-slate-950 truncate"
+                <span
+                  class="text-xs sm:text-sm font-black text-slate-950 truncate"
                   >{currentAdmin.name || "Masunga Paul Maganga"}</span
                 >
                 <span
@@ -369,7 +370,9 @@
                   MASTER ADMIN
                 </span>
               </div>
-              <p class="text-xs text-slate-600 truncate font-mono font-semibold">
+              <p
+                class="text-xs text-slate-600 truncate font-mono font-semibold"
+              >
                 Current Login: {currentAdmin.email}
               </p>
             </div>
@@ -445,7 +448,8 @@
               />
             </div>
             <p class="text-xs text-slate-600 font-medium mt-1">
-              This email will be used to authenticate into the Executive Master Portal.
+              This email will be used to authenticate into the Executive Master
+              Portal.
             </p>
           </div>
 
@@ -568,7 +572,8 @@
             </div>
             <div class="min-w-0">
               <div class="flex items-center gap-2">
-                <span class="text-xs sm:text-sm font-black text-slate-950 truncate"
+                <span
+                  class="text-xs sm:text-sm font-black text-slate-950 truncate"
                   >{currentStaff.name || "Baraka Maganga"}</span
                 >
                 <span
@@ -577,7 +582,9 @@
                   STAFF
                 </span>
               </div>
-              <p class="text-xs text-slate-600 truncate font-mono font-semibold">
+              <p
+                class="text-xs text-slate-600 truncate font-mono font-semibold"
+              >
                 Active: {currentStaff.email}
               </p>
             </div>

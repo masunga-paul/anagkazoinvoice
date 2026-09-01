@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { wipeAllDataFromDB } from '$lib/server/db';
 import { verifySignedToken } from '$lib/server/security';
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, platform }) => {
 	try {
 		// Strict Admin Authorization Check
 		const authHeader = request.headers.get('authorization');
@@ -19,7 +19,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			);
 		}
 
-		const success = await wipeAllDataFromDB();
+		const success = await wipeAllDataFromDB(platform?.env);
 		return json({
 			success,
 			message: success

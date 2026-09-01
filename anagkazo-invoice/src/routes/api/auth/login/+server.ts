@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { authenticateWithNeonDB } from '$lib/server/db';
 import { checkRateLimit, resetRateLimit } from '$lib/server/security';
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, platform }) => {
 	try {
 		const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
 		const body = await request.json();
@@ -44,7 +44,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			);
 		}
 
-		const user = await authenticateWithNeonDB(email, password);
+		const user = await authenticateWithNeonDB(email, password, platform?.env);
 
 		if (!user) {
 			return json(

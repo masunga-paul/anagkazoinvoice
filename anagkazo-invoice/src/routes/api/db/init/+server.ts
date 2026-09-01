@@ -1,12 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { initializeNeonDatabase, sql } from '$lib/server/db';
+import { initializeNeonDatabase, getSql } from '$lib/server/db';
 
-export const GET: RequestHandler = async () => {
+export const GET: RequestHandler = async ({ platform }) => {
 	try {
-		await initializeNeonDatabase();
+		await initializeNeonDatabase(platform?.env);
+		const db = getSql(platform?.env);
 
-		const usersCount = await sql`
+		const usersCount = await db`
 			SELECT COUNT(*)::int as count FROM anagkazo_users;
 		`;
 

@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { updateStaffCredentialsInDB } from '$lib/server/db';
 import { verifySignedToken } from '$lib/server/security';
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, platform }) => {
 	try {
 		// Verify Administrator authorization token
 		const authHeader = request.headers.get('authorization');
@@ -52,7 +52,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			);
 		}
 
-		const user = await updateStaffCredentialsInDB(email, password, name, department);
+		const user = await updateStaffCredentialsInDB(email, password, name, department, platform?.env);
 
 		return json({
 			success: true,

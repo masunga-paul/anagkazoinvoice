@@ -1,24 +1,48 @@
-import { neon } from '@neondatabase/serverless';
+import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
 import { env } from '$env/dynamic/private';
 import type { User, UserRole } from '$lib/types/auth';
 import { hashPassword, verifyPassword, generateSignedToken } from './security';
 
-const CONNECTION_STRING = env.DATABASE_URL || '';
+/**
+ * Dynamically resolves the Neon Database connection string.
+ */
+export function getDbUrl(customEnv?: Record<string, any>): string {
+	const url = customEnv?.DATABASE_URL || env.DATABASE_URL || (typeof process !== 'undefined' ? process.env?.DATABASE_URL : '') || '';
+	return url;
+}
 
-// Initialize Neon Serverless SQL Client
-export const sql = neon(CONNECTION_STRING || 'postgresql://placeholder:placeholder@localhost:5432/neondb');
+/**
+ * Returns a Neon SQL execution function for the active environment.
+ */
+export function getSql(customEnv?: Record<string, any>): NeonQueryFunction<false, false> {
+	const conn = getDbUrl(customEnv);
+	if (!conn) {
+		throw new Error(
+			'DATABASE_URL is not configured in Cloudflare environment variables. Please add DATABASE_URL in Cloudflare Pages Settings -> Environment variables.'
+		);
+	}
+	return neon(conn);
+}
+
+// Fallback exported proxy for direct query execution
+export const sql: NeonQueryFunction<false, false> = ((strings: TemplateStringsArray, ...values: any[]) => {
+	const runner = getSql();
+	return (runner as any)(strings, ...values);
+}) as any;
 
 let isDbInitialized = false;
 
 /**
- * Initializes the Neon PostgreSQL database tables and seeds the default Admin and Standard User accounts with PBKDF2 hashed passwords.
+ * Initializes the Neon PostgreSQL database tables and seeds default Admin and Standard User accounts with PBKDF2 hashed passwords.
  */
-export async function initializeNeonDatabase() {
+export async function initializeNeonDatabase(customEnv?: Record<string, any>) {
 	if (isDbInitialized) return;
 
 	try {
+		const db = getSql(customEnv);
+
 		// 1. Create Users Table
-		await sql`
+		await db`
 			CREATE TABLE IF NOT EXISTS anagkazo_users (
 				id TEXT PRIMARY KEY,
 				email TEXT UNIQUE NOT NULL,
@@ -32,7 +56,7 @@ export async function initializeNeonDatabase() {
 		`;
 
 		// 2. Create Products Table
-		await sql`
+		await db`
 			CREATE TABLE IF NOT EXISTS anagkazo_products (
 				id TEXT PRIMARY KEY,
 				sku TEXT UNIQUE NOT NULL,
@@ -51,7 +75,7 @@ export async function initializeNeonDatabase() {
 		`;
 
 		// 3. Create Customers Table
-		await sql`
+		await db`
 			CREATE TABLE IF NOT EXISTS anagkazo_customers (
 				id TEXT PRIMARY KEY,
 				name TEXT NOT NULL,
@@ -75,7 +99,7 @@ export async function initializeNeonDatabase() {
 		`;
 
 		// 4. Create Invoices Table
-		await sql`
+		await db`
 			CREATE TABLE IF NOT EXISTS anagkazo_invoices (
 				id TEXT PRIMARY KEY,
 				customer TEXT NOT NULL,
@@ -91,12 +115,12 @@ export async function initializeNeonDatabase() {
 		`;
 
 		// Seed initial users if they don't exist yet
-		const existingAdmin = await sql`
+		const existingAdmin = await db`
 			SELECT id FROM anagkazo_users WHERE id = 'usr-admin-001' OR LOWER(email) = 'masungapaulmaganga@gmail.com' LIMIT 1;
 		`;
 		if (!existingAdmin || existingAdmin.length === 0) {
 			const adminHashedPass = hashPassword('123456789Baraka');
-			await sql`
+			await db`
 				INSERT INTO anagkazo_users (id, email, password, name, role, department)
 				VALUES (
 					'usr-admin-001',
@@ -109,12 +133,12 @@ export async function initializeNeonDatabase() {
 			`;
 		}
 
-		const existingStaff = await sql`
+		const existingStaff = await db`
 			SELECT id FROM anagkazo_users WHERE id = 'usr-std-002' OR LOWER(email) = 'bmaganga32@gmail.com' LIMIT 1;
 		`;
 		if (!existingStaff || existingStaff.length === 0) {
 			const staffHashedPass = hashPassword('123456789Brk');
-			await sql`
+			await db`
 				INSERT INTO anagkazo_users (id, email, password, name, role, department)
 				VALUES (
 					'usr-std-002',
@@ -138,12 +162,17 @@ export async function initializeNeonDatabase() {
 /**
  * Verifies user credentials against Neon database with secure cryptographic comparison.
  */
-export async function authenticateWithNeonDB(email: string, password: string): Promise<User | null> {
+export async function authenticateWithNeonDB(
+	email: string,
+	password: string,
+	customEnv?: Record<string, any>
+): Promise<User | null> {
 	try {
-		await initializeNeonDatabase();
+		await initializeNeonDatabase(customEnv);
+		const db = getSql(customEnv);
 
 		const cleanEmail = email.trim().toLowerCase();
-		const rows = await sql`
+		const rows = await db`
 			SELECT id, email, password, name, role, department, created_at
 			FROM anagkazo_users
 			WHERE LOWER(email) = ${cleanEmail}
@@ -162,11 +191,11 @@ export async function authenticateWithNeonDB(email: string, password: string): P
 			return null;
 		}
 
-		// Seamless auto-upgrade legacy plain text password to PBKDF2 hash on successful login
+		// Auto-upgrade legacy plain text password to PBKDF2 hash on successful login
 		if (!userRecord.password.startsWith('pbkdf2$')) {
 			try {
 				const newHash = hashPassword(password);
-				await sql`
+				await db`
 					UPDATE anagkazo_users
 					SET password = ${newHash}, updated_at = CURRENT_TIMESTAMP
 					WHERE id = ${userRecord.id};
@@ -206,17 +235,19 @@ export async function updateStaffCredentialsInDB(
 	email: string,
 	password: string,
 	name?: string,
-	department?: string
+	department?: string,
+	customEnv?: Record<string, any>
 ): Promise<User | null> {
 	try {
-		await initializeNeonDatabase();
+		await initializeNeonDatabase(customEnv);
+		const db = getSql(customEnv);
 		const cleanEmail = email.trim().toLowerCase();
 		const cleanPass = password.trim();
 		const staffName = name?.trim() || 'Baraka Maganga';
 		const staffDept = department?.trim() || 'Sales & Workshop Operations';
 		const hashedPassword = hashPassword(cleanPass);
 
-		const rows = await sql`
+		const rows = await db`
 			UPDATE anagkazo_users
 			SET 
 				email = ${cleanEmail},
@@ -229,7 +260,7 @@ export async function updateStaffCredentialsInDB(
 		`;
 
 		if (!rows || rows.length === 0) {
-			const inserted = await sql`
+			const inserted = await db`
 				INSERT INTO anagkazo_users (id, email, password, name, role, department)
 				VALUES ('usr-std-002', ${cleanEmail}, ${hashedPassword}, ${staffName}, 'standard_user', ${staffDept})
 				RETURNING id, email, name, role, department, created_at, updated_at;
@@ -272,22 +303,23 @@ export async function updateStaffCredentialsInDB(
 /**
  * Updates administrator login credentials (email & password) in the Neon PostgreSQL database with PBKDF2 hashing.
  */
-
 export async function updateAdminCredentialsInDB(
 	email: string,
 	password: string,
 	name?: string,
-	department?: string
+	department?: string,
+	customEnv?: Record<string, any>
 ): Promise<User | null> {
 	try {
-		await initializeNeonDatabase();
+		await initializeNeonDatabase(customEnv);
+		const db = getSql(customEnv);
 		const cleanEmail = email.trim().toLowerCase();
 		const cleanPass = password.trim();
 		const adminName = name?.trim() || 'Masunga Paul Maganga';
 		const adminDept = department?.trim() || 'Executive Management';
 		const hashedPassword = hashPassword(cleanPass);
 
-		const rows = await sql`
+		const rows = await db`
 			UPDATE anagkazo_users
 			SET 
 				email = ${cleanEmail},
@@ -300,7 +332,7 @@ export async function updateAdminCredentialsInDB(
 		`;
 
 		if (!rows || rows.length === 0) {
-			const inserted = await sql`
+			const inserted = await db`
 				INSERT INTO anagkazo_users (id, email, password, name, role, department)
 				VALUES ('usr-admin-001', ${cleanEmail}, ${hashedPassword}, ${adminName}, 'admin', ${adminDept})
 				RETURNING id, email, name, role, department, created_at, updated_at;
@@ -343,11 +375,11 @@ export async function updateAdminCredentialsInDB(
 /**
  * Wipes all customers, products, and invoices from Neon database while preserving admin and staff user accounts.
  */
-export async function wipeAllDataFromDB(): Promise<boolean> {
-
+export async function wipeAllDataFromDB(customEnv?: Record<string, any>): Promise<boolean> {
 	try {
-		await initializeNeonDatabase();
-		await sql`
+		await initializeNeonDatabase(customEnv);
+		const db = getSql(customEnv);
+		await db`
 			DO $$ 
 			BEGIN
 				IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'anagkazo_invoices') THEN
